@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "1070527587327",
+    "firebase_url": "https://realtimechewingdetection.firebaseio.com",
+    "project_id": "realtimechewingdetection",
+    "storage_bucket": "realtimechewingdetection.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1070527587327:android:c17afaefe882afe2",
+        "android_client_info": {
+          "package_name": "com.example.realtimechewingdetection"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1070527587327-1d8srkmpesndp6q4e1iguekjc947ihoe.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.realtimechewingdetection",
+            "certificate_hash": "faa1874fdd4c64f44b4cfa31f003f8676d6833bd"
+          }
+        },
+        {
+          "client_id": "1070527587327-iq86tdrp4q9ggssn3vd28s86dnm4ksej.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCSOvzeWW4WNJXhGlDlsJUUngMMhB4JeQA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1070527587327-iq86tdrp4q9ggssn3vd28s86dnm4ksej.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

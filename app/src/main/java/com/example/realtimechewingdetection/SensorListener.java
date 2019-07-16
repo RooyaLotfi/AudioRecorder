@@ -1,63 +1,57 @@
 package com.example.realtimechewingdetection;
 
+import io.esense.esenselib.ESenseConfig;
+import io.esense.esenselib.ESenseSensorListener;
+
+import com.google.firebase.database.*;
+import com.google.firebase.database.FirebaseDatabase;
+
+
+import java.io.IOException;
 import java.util.Arrays;
 
 import io.esense.esenselib.ESenseEvent;
 import io.esense.esenselib.ESenseSensorListener;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import android.os.Environment;
 
 public class SensorListener implements ESenseSensorListener {
 
-    FileWriter writer;
+    DatabaseReference dbref = FirebaseDatabase.getInstance().getReference();
+    private static ESenseConfig config = new ESenseConfig(ESenseConfig.AccRange.G_2, ESenseConfig.GyroRange.DEG_250, ESenseConfig.AccLPF.BW_5, ESenseConfig.GyroLPF.BW_5);
 
-    public void startSaving(){
-        File root = Environment.getExternalStorageDirectory();
-        File gpxfile = new File(root, "mydata.csv");
-        try {
-            writer = new FileWriter(gpxfile);
-            writeCsvHeader("Time","Acc","Gyr");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-    }
     @Override
     public void onSensorChanged(ESenseEvent eSenseEvent) {
+        //System.out.println("Accel: " + Arrays.toString(eSenseEvent.convertAccToG(config)));
+        System.out.println("Gyro: " + Arrays.toString(eSenseEvent.convertGyroToDegPerSecond(config)));
+        writeNewData(Arrays.toString(eSenseEvent.convertAccToG(config)), Arrays.toString(eSenseEvent.convertGyroToDegPerSecond(config)));
 
+        if (SensorDataRecorder.isRecording()) {
+            long time = System.currentTimeMillis();
+
+            //System.out.println("Accel: " + Arrays.toString(eSenseEvent.getAccel()));
+            //System.out.println("Gyro: " + Arrays.toString(eSenseEvent.getGyro()));
+
+            double[] accel = eSenseEvent.convertAccToG(config);
+            double[] gyro = eSenseEvent.convertGyroToDegPerSecond(config);
+
+            SensorData sensorData = new SensorData(time, accel[0], accel[1], accel[2], gyro[0], gyro[1], gyro[2]);
+            try {
+                SensorDataRecorder.writeCsvData(sensorData);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    //private void writeNewData(String acc, String gyr) {
+    //  Data data = new Data(acc, gyr);
+    //  dbref.child("Sensor Data").push().setValue(data);
+    // }
+
+    private void writeNewData(String acc, String gyr) {
         long time = System.nanoTime();
-        //System.out.println("Accel: " + Arrays.toString(eSenseEvent.getAccel()));
-        //System.out.println("Gyro: " + Arrays.toString(eSenseEvent.getGyro()));
-        try {
-            writeCsvData(time, Arrays.toString(eSenseEvent.getAccel()), Arrays.toString(eSenseEvent.getGyro()));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void writeCsvHeader(String h1, String h2, String h3) throws IOException {
-        String line = String.format("%s,%s,%s\n", h1, h2, h3);
-        writer.write(line);
-
-    }
-
-    private void writeCsvData(long d, String s1, String s2) throws IOException {
-        String line = String.format("%d %s,%s\n", d, s1, s2);
-        writer.write(line);
-    }
-
-    public void disconnect(){
-        try {
-            writer.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        try {
-            writer.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        DatabaseReference nodeReference = dbref.child("Sensor Data");
+        nodeReference.child(String.valueOf(time)).child("_Acc").setValue(acc);
+        nodeReference.child(String.valueOf(time)).child("_Gyr").setValue(gyr);
+        nodeReference.child(String.valueOf(time)).child("_moduletime").setValue(time);
     }
 }
