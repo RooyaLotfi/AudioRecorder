@@ -78,7 +78,7 @@ public class MainActivity extends AppCompatActivity {
             btnStartRecord.setOnClickListener(new View.OnClickListener() {
                 public void onClick(View view) {
 
-                    String dateTime = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss").format(Calendar.getInstance().getTime());
+                    String dateTime = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss.SSS").format(Calendar.getInstance().getTime());
 
                     //Date currentTime = Calendar.getInstance().getTime();
                     //long timestamp = System.currentTimeMillis();
