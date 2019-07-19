@@ -19,6 +19,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
+import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
@@ -92,7 +93,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                     if (success) {
                         pathSave = folder.getAbsolutePath()+File.separator+ dateTime;
-                        pathSaveAudio = folder.getAbsolutePath()+File.separator+ dateTime + "-Audio.wav";
+                        pathSaveAudio = folder.getAbsolutePath()+File.separator+ dateTime + "-Audio.3gp";
                         Log.i(TAG,pathSave);
                     } else {
                         // Do something else on failure
@@ -186,8 +187,12 @@ public class MainActivity extends AppCompatActivity {
         mediaRecorder = new MediaRecorder();
         mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
         mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
-        mediaRecorder.setAudioEncoder(MediaRecorder.OutputFormat.AMR_NB);
-        mediaRecorder.setAudioSamplingRate(48000);
+        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
+        //mediaRecorder.setOutputFormat(AudioFormat.ENCODING_PCM_16BIT);
+
+        //mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+        //mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+        mediaRecorder.setAudioSamplingRate(2000);
         mediaRecorder.setOutputFile(pathSaveAudio);
     }
 

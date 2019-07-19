@@ -26,7 +26,7 @@ public class SensorDataRecorder {
     }
 
     private static  void writeCsvHeader() throws IOException {
-        String line = String.format("%s,%s,%s,%s,%s,%s,%s\n", "Time", "Timestamp", "Acc X","Acc Y", "Acc Z", "Gyro X", "Gyro Y", "Gyro Z");
+        String line = String.format("%s,%s,%s,%s,%s,%s,%s,%s\n", "Time", "Timestamp", "Acc X","Acc Y", "Acc Z", "Gyro X", "Gyro Y", "Gyro Z");
         writer.write(line);
     }
 
