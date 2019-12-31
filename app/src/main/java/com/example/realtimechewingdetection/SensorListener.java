@@ -20,9 +20,9 @@ public class SensorListener implements ESenseSensorListener {
 
     @Override
     public void onSensorChanged(ESenseEvent eSenseEvent) {
-        //System.out.println("Accel: " + Arrays.toString(eSenseEvent.convertAccToG(config)));
+        System.out.println("Accel: " + Arrays.toString(eSenseEvent.convertAccToG(config)));
         System.out.println("Gyro: " + Arrays.toString(eSenseEvent.convertGyroToDegPerSecond(config)));
-        writeNewData(Arrays.toString(eSenseEvent.convertAccToG(config)), Arrays.toString(eSenseEvent.convertGyroToDegPerSecond(config)));
+        //writeNewDataFirebase(Arrays.toString(eSenseEvent.convertAccToG(config)), Arrays.toString(eSenseEvent.convertGyroToDegPerSecond(config)));
 
         if (SensorDataRecorder.isRecording()) {
             long time = System.currentTimeMillis();
@@ -47,7 +47,7 @@ public class SensorListener implements ESenseSensorListener {
     //  dbref.child("Sensor Data").push().setValue(data);
     // }
 
-    private void writeNewData(String acc, String gyr) {
+    private void writeNewDataFirebase(String acc, String gyr) {
         long time = System.nanoTime();
         DatabaseReference nodeReference = dbref.child("Sensor Data");
         nodeReference.child(String.valueOf(time)).child("_Acc").setValue(acc);

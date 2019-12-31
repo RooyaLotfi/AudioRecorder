@@ -13,7 +13,7 @@ public class SensorDataRecorder {
     private static boolean isRecording = false;
     private static String dateTime;
 
-    public static void startSaving(String fileName){
+    public static void createCSV(String fileName){
         isRecording =  true;
         File root = Environment.getExternalStorageDirectory();
         File gpxfile = new File(root, fileName + ".csv");

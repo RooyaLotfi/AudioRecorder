@@ -28,27 +28,7 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:layout_editor_absoluteX="51dp" />
 
-    <Button
-        android:id="@+id/btnPlay"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_vertical|center_horizontal"
-        android:layout_marginTop="300dp"
-        android:width="150pt"
-        android:text="Play"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:layout_editor_absoluteX="51dp" />
 
-    <Button
-        android:id="@+id/btnStop"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_vertical|center_horizontal"
-        android:layout_marginTop="400dp"
-        android:width="150pt"
-        android:text="Stop"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:layout_editor_absoluteX="118dp" />
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline"
@@ -65,7 +45,7 @@
         app:layout_constraintGuide_begin="20dp" />
 
     <Button
-        android:id="@+id/button"
+        android:id="@+id/btnBluetooth"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:width="150pt"

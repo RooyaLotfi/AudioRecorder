@@ -21,6 +21,7 @@ import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.media.AudioFormat;
 import android.media.AudioManager;
+import android.media.AudioRecord;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.os.Bundle;
@@ -35,7 +36,9 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -43,22 +46,88 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.esense.esenselib.*;
 
 public class MainActivity extends AppCompatActivity {
 
-    Button btnStartRecord, btnStopRecord, btnPlay, btnStop;
+    Button btnStartRecord, btnStopRecord, bluetoothButton;
     private ESenseManager manager;
     ConnectionListener connectionListener;
     SensorListener sensor_listener;
-    private static final String TAG = "MainActivity";
     String pathSaveAudio = "";
     String pathSave = "";
-    MediaRecorder mediaRecorder;
-    MediaPlayer mediaPlayer;
-    AudioManager audioManager;
     final int REQUEST_PERMISSION_CODE = 1000;
+
+    private static final String TAG = MainActivity.class.getCanonicalName();
+
+    private static final int SAMPLING_RATE_IN_HZ = 48000;
+
+    private static final int CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO;
+
+    private static final int AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT;
+
+    /**
+     * Factor by that the minimum buffer size is multiplied. The bigger the factor is the less
+     * likely it is that samples will be dropped, but more memory will be used. The minimum buffer
+     * size is determined by {@link AudioRecord#getMinBufferSize(int, int, int)} and depends on the
+     * recording settings.
+     */
+    private static final int BUFFER_SIZE_FACTOR = 2;
+
+    /**
+     * Size of the buffer where the audio data is stored by Android
+     */
+    private static final int BUFFER_SIZE = AudioRecord.getMinBufferSize(SAMPLING_RATE_IN_HZ, CHANNEL_CONFIG, AUDIO_FORMAT) * BUFFER_SIZE_FACTOR;
+
+    /**
+     * Signals whether a recording is in progress (true) or not (false).
+     */
+    private final AtomicBoolean recordingInProgress = new AtomicBoolean(false);
+
+    private final BroadcastReceiver bluetoothStateReceiver = new BroadcastReceiver() {
+
+        private BluetoothState bluetoothState = BluetoothState.UNAVAILABLE;
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            int state = intent.getIntExtra(AudioManager.EXTRA_SCO_AUDIO_STATE, -1); // Checks if bluetooth is connected
+            switch (state) {
+                case AudioManager.SCO_AUDIO_STATE_CONNECTED:
+                    Log.i(TAG, "Bluetooth HFP Headset is connected");
+                    handleBluetoothStateChange(BluetoothState.AVAILABLE);
+                    break;
+                case AudioManager.SCO_AUDIO_STATE_CONNECTING:
+                    Log.i(TAG, "Bluetooth HFP Headset is connecting");
+                    handleBluetoothStateChange(BluetoothState.UNAVAILABLE);
+                case AudioManager.SCO_AUDIO_STATE_DISCONNECTED:
+                    Log.i(TAG, "Bluetooth HFP Headset is disconnected");
+                    handleBluetoothStateChange(BluetoothState.UNAVAILABLE);
+                    break;
+                case AudioManager.SCO_AUDIO_STATE_ERROR:
+                    Log.i(TAG, "Bluetooth HFP Headset is in error state");
+                    handleBluetoothStateChange(BluetoothState.UNAVAILABLE);
+                    break;
+            }
+        }
+
+        private void handleBluetoothStateChange(BluetoothState state) {
+            if (bluetoothState == state) {
+                return;
+            }
+
+            bluetoothState = state;
+            bluetoothStateChanged(state);
+        }
+    };
+
+    private AudioRecord recorder = null;
+
+    private AudioManager audioManager;
+
+    private Thread recordingThread = null;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,12 +136,9 @@ public class MainActivity extends AppCompatActivity {
 
         btnStartRecord = findViewById(R.id.btnStartRecord);
         btnStopRecord = findViewById(R.id.btnStopRecord);
-        btnPlay = findViewById(R.id.btnPlay);
-        btnStop = findViewById(R.id.btnStop);
+
 
         btnStartRecord.setEnabled(true);
-        btnPlay.setEnabled(false);
-        btnStop.setEnabled(false);
         btnStopRecord.setEnabled(false);
 
         if (checkPermissionFromDevices()) {
@@ -80,9 +146,6 @@ public class MainActivity extends AppCompatActivity {
                 public void onClick(View view) {
 
                     String dateTime = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss.SSS").format(Calendar.getInstance().getTime());
-
-                    //Date currentTime = Calendar.getInstance().getTime();
-                    //long timestamp = System.currentTimeMillis();
 
                     File folder = new File(Environment.getExternalStorageDirectory() +
                             File.separator + "eSenseData");
@@ -93,87 +156,49 @@ public class MainActivity extends AppCompatActivity {
                     }
                     if (success) {
                         pathSave = folder.getAbsolutePath()+File.separator+ dateTime;
-                        pathSaveAudio = folder.getAbsolutePath()+File.separator+ dateTime + "-Audio.3gp";
                         Log.i(TAG,pathSave);
                     } else {
                         // Do something else on failure
                     }
 
-                    //pathSave = Environment.getExternalStorageDirectory().getAbsolutePath() + "/"
-                    //     + dateTime + "-Audio.wav";
-                    setupMediaRecorder();
-                    try {
-                        mediaRecorder.prepare();
-                        mediaRecorder.start();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
                     btnStartRecord.setEnabled(false);
-                    btnPlay.setEnabled(false);
-                    btnStop.setEnabled(false);
                     btnStopRecord.setEnabled(true);
 
                     Toast.makeText(MainActivity.this, "Recording has begun...", Toast.LENGTH_SHORT).show();
 
+                    SensorDataRecorder.createCSV( "eSenseData" + File.separator + dateTime + "-SensorData");
                     ConnectionListener connectionListener = new ConnectionListener();
-                    manager = new ESenseManager("eSense-0883", MainActivity.this.getApplicationContext(), connectionListener);
+                    manager = new ESenseManager("eSense-0636", MainActivity.this.getApplicationContext(), connectionListener);
                     manager.connect(5000); // timeout = scan timeout in milli seconds
 
-                    SensorDataRecorder.startSaving( "eSenseData" + File.separator + dateTime + "-SensorData");
+
+                    startRecording();
                 }
             });
 
             btnStopRecord.setOnClickListener(new View.OnClickListener() {
                 public void onClick(View view) {
 
-                    mediaRecorder.stop();
                     if (manager.isConnected() && SensorDataRecorder.isRecording()) {
                         manager.unregisterSensorListener();
                         SensorDataRecorder.disconnect();
                         manager.disconnect();
                     }
-                    btnPlay.setEnabled(true);
-                    btnStop.setEnabled(false);
                     btnStartRecord.setEnabled(true);
                     btnStopRecord.setEnabled(false);
+
+                    stopRecording();
 
                 }
             });
 
-            btnPlay.setOnClickListener(new View.OnClickListener() {
+            audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+
+            bluetoothButton = (Button) findViewById(R.id.btnBluetooth);
+            bluetoothButton.setOnClickListener(new View.OnClickListener() {
+                @Override
                 public void onClick(View view) {
-                    btnStop.setEnabled(true);
-                    btnStopRecord.setEnabled(false);
-                    btnStartRecord.setEnabled(false);
-
-                    mediaPlayer = new MediaPlayer();
-
-                    try {
-
-                        mediaPlayer.setDataSource(pathSaveAudio);
-                        mediaPlayer.prepare();
-
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-
-                    mediaPlayer.start();
-                    Toast.makeText(MainActivity.this, "Playing.......", Toast.LENGTH_SHORT).show();
-                }
-            });
-
-            btnStop.setOnClickListener(new View.OnClickListener() {
-                public void onClick(View view) {
-                    btnStop.setEnabled(false);
-                    btnStopRecord.setEnabled(false);
-                    btnStartRecord.setEnabled(true);
-                    btnPlay.setEnabled(true);
-
-                    if (mediaPlayer != null) {
-                        mediaPlayer.stop();
-                        mediaPlayer.release();
-                        setupMediaRecorder();
-                    }
+                    activateBluetoothSco();
                 }
             });
 
@@ -181,19 +206,6 @@ public class MainActivity extends AppCompatActivity {
             requestPermission();
         }
 
-    }
-
-    private void setupMediaRecorder() {
-        mediaRecorder = new MediaRecorder();
-        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
-        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
-        //mediaRecorder.setOutputFormat(AudioFormat.ENCODING_PCM_16BIT);
-
-        //mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
-        //mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-        mediaRecorder.setAudioSamplingRate(2000);
-        mediaRecorder.setOutputFile(pathSaveAudio);
     }
 
     private void requestPermission() {
@@ -229,57 +241,141 @@ public class MainActivity extends AppCompatActivity {
                 record_audio_result == PackageManager.PERMISSION_GRANTED;
     }
 
-
-    private BroadcastReceiver mBluetoothScoReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            int state = intent.getIntExtra(AudioManager.EXTRA_SCO_AUDIO_STATE, -1);
-            System.out.println("ANDROID Audio SCO state: " + state);
-            if (AudioManager.SCO_AUDIO_STATE_CONNECTED == state) {
-
-
-                Log.i(TAG, "Connection is being Established");
-                /*
-                 * Now the connection has been established to the bluetooth device.
-                 * Record audio or whatever (on another thread).With AudioRecord you can record with an object created like this:
-                 * new AudioRecord(MediaRecorder.AudioSource.MIC, 8000, AudioFormat.CHANNEL_CONFIGURATION_MONO,
-                 * AudioFormat.ENCODING_PCM_16BIT, audioBufferSize);
-                 *
-                 * After finishing, don't forget to unregister this receiver and
-                 * to stop the bluetooth connection with am.stopBluetoothSco();
-                 */
-                setupMediaRecorder();
-                //unregisterReceiver(this);
-            } else if (AudioManager.SCO_AUDIO_STATE_DISCONNECTED == state) {
-                Log.i(TAG, "SCO_AUDIO_STATE_DISCONNECTED The connection has not been established");
-            }
-        }
-    };
-
     @Override
     protected void onResume() {
         super.onResume();
-        IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_SCO_AUDIO_STATE_UPDATED);
-        registerReceiver(mBluetoothScoReceiver, intentFilter);
-        audioManager = (AudioManager) getApplicationContext().getSystemService(getApplicationContext().AUDIO_SERVICE);
-        // Start Bluetooth SCO.
-        audioManager.setMode(audioManager.MODE_NORMAL);
-        audioManager.setBluetoothScoOn(true);
-        audioManager.startBluetoothSco();
-        // Stop Speaker.
-        audioManager.setSpeakerphoneOn(false);
 
+        bluetoothButton.setEnabled(calculateBluetoothButtonState());
+        btnStartRecord.setEnabled(calculateStartRecordButtonState());
+        btnStopRecord.setEnabled(calculateStopRecordButtonState());
+
+        registerReceiver(bluetoothStateReceiver, new IntentFilter(
+                AudioManager.ACTION_SCO_AUDIO_STATE_UPDATED));
     }
 
     @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        unregisterReceiver(mBluetoothScoReceiver);
-        // Stop Bluetooth SCO.
-        audioManager.stopBluetoothSco();
-        audioManager.setMode(audioManager.MODE_NORMAL);
-        audioManager.setBluetoothScoOn(false);
-        // Start Speaker.
-        audioManager.setSpeakerphoneOn(true);
+    protected void onPause() {
+        super.onPause();
+
+        stopRecording();
+        unregisterReceiver(bluetoothStateReceiver);
+    }
+
+    private void startRecording() {
+        // Depending on the device one might has to change the AudioSource, e.g. to DEFAULT
+        // or VOICE_COMMUNICATION
+        recorder = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, SAMPLING_RATE_IN_HZ, CHANNEL_CONFIG, AUDIO_FORMAT, BUFFER_SIZE);
+
+        recorder.startRecording();
+
+        recordingInProgress.set(true);
+
+        recordingThread = new Thread(new RecordingRunnable(), "Recording Thread");
+        recordingThread.start();
+
+        bluetoothButton.setEnabled(calculateBluetoothButtonState());
+        btnStartRecord.setEnabled(calculateStartRecordButtonState());
+        btnStopRecord.setEnabled(calculateStopRecordButtonState());
+    }
+
+    private void stopRecording() {
+        if (null == recorder) {
+            return;
+        }
+
+        recordingInProgress.set(false);
+
+        recorder.stop();
+
+        recorder.release();
+
+        recorder = null;
+
+        recordingThread = null;
+
+        bluetoothButton.setEnabled(calculateBluetoothButtonState());
+        btnStartRecord.setEnabled(calculateStartRecordButtonState());
+        btnStopRecord.setEnabled(calculateStopRecordButtonState());
+    }
+
+    private void activateBluetoothSco() {
+        if (!audioManager.isBluetoothScoAvailableOffCall()) {
+            Log.e(TAG, "SCO ist not available, recording is not possible");
+            return;
+        }
+
+        if (!audioManager.isBluetoothScoOn()) {
+            audioManager.startBluetoothSco();
+        }
+    }
+
+    private void bluetoothStateChanged(BluetoothState state) {
+        Log.i(TAG, "Bluetooth state changed to:" + state);
+
+        if (BluetoothState.UNAVAILABLE == state && recordingInProgress.get()) {
+            stopRecording();
+        }
+
+        bluetoothButton.setEnabled(calculateBluetoothButtonState());
+        btnStartRecord.setEnabled(calculateStartRecordButtonState());
+        btnStopRecord.setEnabled(calculateStopRecordButtonState());
+    }
+
+    private boolean calculateBluetoothButtonState() {
+        return !audioManager.isBluetoothScoOn();
+    }
+
+    private boolean calculateStartRecordButtonState() {
+        return audioManager.isBluetoothScoOn() && !recordingInProgress.get();
+    }
+
+    private boolean calculateStopRecordButtonState() {
+        return audioManager.isBluetoothScoOn() && recordingInProgress.get();
+    }
+
+    private class RecordingRunnable implements Runnable {
+
+        @Override
+        public void run() {
+
+            String dateTime = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss.SSS").format(Calendar.getInstance().getTime());
+
+            final File file = new File(Environment.getExternalStorageDirectory() + File.separator + "eSenseData", dateTime+"-audio.pcm");
+
+            final ByteBuffer buffer = ByteBuffer.allocateDirect(BUFFER_SIZE);
+
+            try (final FileOutputStream outStream = new FileOutputStream(file)) {
+                while (recordingInProgress.get()) {
+                    int result = recorder.read(buffer, BUFFER_SIZE);
+                    if (result < 0) {
+                        throw new RuntimeException("Reading of audio buffer failed: " +
+                                getBufferReadFailureReason(result));
+                    }
+                    outStream.write(buffer.array(), 0, BUFFER_SIZE); // Writes the output in
+                    buffer.clear();
+                }
+            } catch (IOException e) {
+                throw new RuntimeException("Writing of recorded audio failed", e);
+            }
+        }
+
+        private String getBufferReadFailureReason(int errorCode) {
+            switch (errorCode) {
+                case AudioRecord.ERROR_INVALID_OPERATION:
+                    return "ERROR_INVALID_OPERATION";
+                case AudioRecord.ERROR_BAD_VALUE:
+                    return "ERROR_BAD_VALUE";
+                case AudioRecord.ERROR_DEAD_OBJECT:
+                    return "ERROR_DEAD_OBJECT";
+                case AudioRecord.ERROR:
+                    return "ERROR";
+                default:
+                    return "Unknown (" + errorCode + ")";
+            }
+        }
+    }
+
+    enum BluetoothState {
+        AVAILABLE, UNAVAILABLE
     }
 }

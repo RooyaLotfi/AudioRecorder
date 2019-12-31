@@ -21,7 +21,7 @@ public class ConnectionListener implements ESenseConnectionListener {
         System.out.println("***********CONNECTEDDDDD");
 
         SensorListener sensor_listener = new SensorListener();
-        eSenseManager.registerSensorListener(sensor_listener, 100);
+        eSenseManager.registerSensorListener(sensor_listener, 1);
     }
 
     @Override
