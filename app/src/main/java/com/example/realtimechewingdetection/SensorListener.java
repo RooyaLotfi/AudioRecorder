@@ -8,10 +8,11 @@ import com.google.firebase.database.FirebaseDatabase;
 
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Calendar;
 
 import io.esense.esenselib.ESenseEvent;
-import io.esense.esenselib.ESenseSensorListener;
 
 public class SensorListener implements ESenseSensorListener {
 
@@ -33,12 +34,14 @@ public class SensorListener implements ESenseSensorListener {
             double[] accel = eSenseEvent.convertAccToG(config);
             double[] gyro = eSenseEvent.convertGyroToDegPerSecond(config);
 
-            SensorData sensorData = new SensorData(time, accel[0], accel[1], accel[2], gyro[0], gyro[1], gyro[2]);
-            try {
-                SensorDataRecorder.writeCsvData(sensorData);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            String dateTime = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss.SSS").format(Calendar.getInstance().getTime());
+
+            SensorData sensorData = new SensorData(dateTime, time, accel[0], accel[1], accel[2], gyro[0], gyro[1], gyro[2]);
+            //try {
+                SensorDataRecorder.writeSensorData(sensorData);
+            //} catch (IOException e) {
+            //    e.printStackTrace();
+            //}
         }
     }
 

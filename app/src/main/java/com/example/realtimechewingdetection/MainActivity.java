@@ -168,9 +168,8 @@ public class MainActivity extends AppCompatActivity {
 
                     SensorDataRecorder.createCSV( "eSenseData" + File.separator + dateTime + "-SensorData");
                     ConnectionListener connectionListener = new ConnectionListener();
-                    manager = new ESenseManager("eSense-0636", MainActivity.this.getApplicationContext(), connectionListener);
+                    manager = new ESenseManager("eSense-0883", MainActivity.this.getApplicationContext(), connectionListener);
                     manager.connect(5000); // timeout = scan timeout in milli seconds
-
 
                     startRecording();
                 }
@@ -181,8 +180,8 @@ public class MainActivity extends AppCompatActivity {
 
                     if (manager.isConnected() && SensorDataRecorder.isRecording()) {
                         manager.unregisterSensorListener();
-                        SensorDataRecorder.disconnect();
                         manager.disconnect();
+                        SensorDataRecorder.disconnect();
                     }
                     btnStartRecord.setEnabled(true);
                     btnStopRecord.setEnabled(false);
