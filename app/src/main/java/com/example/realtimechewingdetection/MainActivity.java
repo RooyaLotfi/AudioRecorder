@@ -169,7 +169,7 @@ public class MainActivity extends AppCompatActivity {
                     SensorDataRecorder.createCSV( "eSenseData" + File.separator + dateTime + "-SensorData");
                     ConnectionListener connectionListener = new ConnectionListener();
                     manager = new ESenseManager("eSense-0883", MainActivity.this.getApplicationContext(), connectionListener);
-                    manager.connect(5000); // timeout = scan timeout in milli seconds
+                    manager.connect(25000); // timeout = scan timeout in milli seconds
 
                     startRecording();
                 }
