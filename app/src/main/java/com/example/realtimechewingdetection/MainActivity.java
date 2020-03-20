@@ -54,8 +54,6 @@ public class MainActivity extends AppCompatActivity {
 
     Button btnStartRecord, btnStopRecord, bluetoothButton;
     private ESenseManager manager;
-    ConnectionListener connectionListener;
-    SensorListener sensor_listener;
     String pathSaveAudio = "";
     String pathSave = "";
     final int REQUEST_PERMISSION_CODE = 1000;
@@ -138,8 +136,8 @@ public class MainActivity extends AppCompatActivity {
         btnStopRecord = findViewById(R.id.btnStopRecord);
 
 
-        btnStartRecord.setEnabled(true);
-        btnStopRecord.setEnabled(false);
+        //btnStartRecord.setEnabled(true);
+        //btnStopRecord.setEnabled(false);
 
         if (checkPermissionFromDevices()) {
             btnStartRecord.setOnClickListener(new View.OnClickListener() {
@@ -161,15 +159,11 @@ public class MainActivity extends AppCompatActivity {
                         // Do something else on failure
                     }
 
-                    btnStartRecord.setEnabled(false);
-                    btnStopRecord.setEnabled(true);
+                    //btnStartRecord.setEnabled(false);
+                    //btnStopRecord.setEnabled(true);
 
                     Toast.makeText(MainActivity.this, "Recording has begun...", Toast.LENGTH_SHORT).show();
 
-                    SensorDataRecorder.createCSV( "eSenseData" + File.separator + dateTime + "-SensorData");
-                    ConnectionListener connectionListener = new ConnectionListener();
-                    manager = new ESenseManager("eSense-0883", MainActivity.this.getApplicationContext(), connectionListener);
-                    manager.connect(25000); // timeout = scan timeout in milli seconds
 
                     startRecording();
                 }
@@ -178,13 +172,8 @@ public class MainActivity extends AppCompatActivity {
             btnStopRecord.setOnClickListener(new View.OnClickListener() {
                 public void onClick(View view) {
 
-                    if (manager.isConnected() && SensorDataRecorder.isRecording()) {
-                        manager.unregisterSensorListener();
-                        manager.disconnect();
-                        SensorDataRecorder.disconnect();
-                    }
-                    btnStartRecord.setEnabled(true);
-                    btnStopRecord.setEnabled(false);
+                    //btnStartRecord.setEnabled(true);
+                    //btnStopRecord.setEnabled(false);
 
                     stopRecording();
 
@@ -244,9 +233,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
 
-        bluetoothButton.setEnabled(calculateBluetoothButtonState());
-        btnStartRecord.setEnabled(calculateStartRecordButtonState());
-        btnStopRecord.setEnabled(calculateStopRecordButtonState());
+        //bluetoothButton.setEnabled(calculateBluetoothButtonState());
+        //btnStartRecord.setEnabled(calculateStartRecordButtonState());
+        //btnStopRecord.setEnabled(calculateStopRecordButtonState());
 
         registerReceiver(bluetoothStateReceiver, new IntentFilter(
                 AudioManager.ACTION_SCO_AUDIO_STATE_UPDATED));
@@ -272,9 +261,9 @@ public class MainActivity extends AppCompatActivity {
         recordingThread = new Thread(new RecordingRunnable(), "Recording Thread");
         recordingThread.start();
 
-        bluetoothButton.setEnabled(calculateBluetoothButtonState());
-        btnStartRecord.setEnabled(calculateStartRecordButtonState());
-        btnStopRecord.setEnabled(calculateStopRecordButtonState());
+        //bluetoothButton.setEnabled(calculateBluetoothButtonState());
+        //btnStartRecord.setEnabled(calculateStartRecordButtonState());
+        //btnStopRecord.setEnabled(calculateStopRecordButtonState());
     }
 
     private void stopRecording() {
@@ -292,9 +281,9 @@ public class MainActivity extends AppCompatActivity {
 
         recordingThread = null;
 
-        bluetoothButton.setEnabled(calculateBluetoothButtonState());
-        btnStartRecord.setEnabled(calculateStartRecordButtonState());
-        btnStopRecord.setEnabled(calculateStopRecordButtonState());
+        //bluetoothButton.setEnabled(calculateBluetoothButtonState());
+        //btnStartRecord.setEnabled(calculateStartRecordButtonState());
+        //btnStopRecord.setEnabled(calculateStopRecordButtonState());
     }
 
     private void activateBluetoothSco() {
@@ -315,9 +304,9 @@ public class MainActivity extends AppCompatActivity {
             stopRecording();
         }
 
-        bluetoothButton.setEnabled(calculateBluetoothButtonState());
-        btnStartRecord.setEnabled(calculateStartRecordButtonState());
-        btnStopRecord.setEnabled(calculateStopRecordButtonState());
+        //bluetoothButton.setEnabled(calculateBluetoothButtonState());
+        //btnStartRecord.setEnabled(calculateStartRecordButtonState());
+        //btnStopRecord.setEnabled(calculateStopRecordButtonState());
     }
 
     private boolean calculateBluetoothButtonState() {
